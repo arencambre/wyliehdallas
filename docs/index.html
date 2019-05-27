@@ -1336,7 +1336,7 @@ tweets_filtered$hour &lt;- as.numeric(strftime(tweets_filtered$created_at, forma
   ylab(&quot;count of tweets&quot;) +
   ggtitle(paste(advocamentum_news_media[advocamentum_news_media$screen_name == i,]$screen_name, &quot;&#39;s tweet time histogram&quot;, sep = &quot;&quot;))
   print(plot)
-  ggsave(paste(i, &quot;.png&quot;))
+  ggsave(paste0(i, &quot;.png&quot;))
 }</code></pre>
 <pre><code>## Saving 7 x 5 in image</code></pre>
 <p><img src="index_files/figure-html/unnamed-chunk-22-1.png" width="672" /></p>

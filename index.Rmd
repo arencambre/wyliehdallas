@@ -317,7 +317,7 @@ for (i in unique(sort(tweets_filtered$screen_name))) {
   ylab("count of tweets") +
   ggtitle(paste(advocamentum_news_media[advocamentum_news_media$screen_name == i,]$screen_name, "'s tweet time histogram", sep = ""))
   print(plot)
-  ggsave(paste(i, ".png"))
+  ggsave(paste0(i, ".png"))
 }
 ```
 
