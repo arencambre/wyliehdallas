@@ -10,25 +10,7 @@ library(httpuv)
 library(drlib)
 library(widyr)
 
-# token <- create_token(
-#   app = "rtweet_token",
-#   consumer_key = "7LgQuKz4SLgYGRyrjDE7Wvcrv",
-#   consumer_secret = "0IlOj4SEZF4ewjqtvkJQpI2WC5Umb4pRqainUMYFVAggOH32vN",
-#   access_token = "355116443-DZN0eHCdJsRKUptWALuGpjTs0RW6lNTtCcUGUVV4",
-#   access_secret = "SBI16aiiqFYU94KSHkPVCNUdFyxaUXvJlBOvxKm3CgHht")
-
-# this is my own
-token <- create_token(
-  app = "Cambre R research",
-  consumer_key = "mkWNTQ1fxAUsubsndN5KWgg9Z",
-  consumer_secret = "DZNEbDCzcHxdhfrUTUJY2RV3SwhUoUfjqFrzOV0RVlmhCy9JP1",
-  access_token = "24486921-AwuNh3AjJcF3ZQRw9Dle0NfCCcHmYj5ZqrGbJazda",
-  access_secret = "Oney2PPAHZs0Gi5TirhwvuvKtMzHZcZmBnoYeGAta1g6D")
-
-#token <- create_token(
-#  app = "token",
-#  consumer_key = "yqoymTNrS9ZDGsBnlFhIuw",
-#  consumer_secret = "OMai1whT3sT3XMskI7DZ7xiju5i5rAYJnxSEHaKYvEs")
+source(tokens.R)
 
 # list of prominent Dallas media members
 # from https://twitter.com/advocamentum/lists/news-media/members
