@@ -1,0 +1,7 @@
+name: "Wylie H. Dallas analysis"
+output_dir: "docs"
+navbar:
+  title: "Wylie H. Dallas analysis"
+  left:
+    - text: "Home"
+      href: index.html

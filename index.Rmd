@@ -1,0 +1,324 @@
+---
+title: "Analyzing Wylie H. Dallas with data science"
+author: "Aren Cambre"
+output:
+  html_document: 
+    toc: yes
+---
+**This is a draft document. The prose isn't where I want it to be, some of the technical explanations aren't fully accurate, I need to provide more visualizations, and I leave the reader hanging at the end with a mess of plots. These will eventually be improved.**
+
+
+[Wylie H. Dallas](https://twitter.com/Wylie_H_Dallas) is an alter ego for a an unknown person, posing as a Dallas-area political gadfly. This alter ego occasionally uses insider information for the common good. However, the alter ego aligns with "New Urbanist" or radical-leftist ideas and is comfortable with direct, sarcastic critiques of policy or public figures.
+
+I've always suspected Wylie is someone's outlet for things that cannot be said with his or her public persona.
+
+Through use of data science, I suspect Jim Schutze knows more about Wylie than he [lets](https://www.dallasobserver.com/news/we-must-stop-the-speculation-about-the-identity-of-wylie-h-soon-8561550) [on](https://www.dmagazine.com/publications/d-magazine/2015/june/wylie-h-dallas-most-powerful-nobody-in-dallas/). Wylie says Schutze is his [favorite](https://www.dallasobserver.com/arts/100-dallas-creatives-no-27-political-cyber-banksy-wylie-h-dallas-7097170) journalist.
+
+I analyzed tweets of 51 Dallas-area media personalities and Wylie. I did this with [R](https://en.wikipedia.org/wiki/R_(programming_language), a free software environment that is popular with the data science crowd, especially with applications for humanities and social sciences.
+
+The rest of this document is my explanation of the analysis and the results. I was inspired by--and in a few cases stole code from--David Robinson's similar [analysis](http://varianceexplained.org/r/op-ed-text-analysis/) of who wrote the ["I Am Part of the Resistance" op-ed](https://www.nytimes.com/2018/09/05/opinion/trump-white-house-anonymous-resistance.html) about the Trump administration.
+
+My first analysis is to see if any of the media personalities' word use aligns with Wylie's.
+
+First, I need to load some libraries. These have code I will be using throughout this first section.
+```{r load libraries, include=FALSE, results='hide'}
+# based on http://varianceexplained.org/r/op-ed-text-analysis/
+library(rtweet)
+library(tidyverse)
+library(tidytext)
+library(knitr)
+library(kableExtra)
+library(widyr)
+```
+I set up a Twitter access token. This allows me to pull data out of Twitter using its API.
+```{r create Twitter token, eval=FALSE, include=FALSE}
+token <- create_token(
+  app = "app name goes here",
+  consumer_key = "API key goes here",
+  consumer_secret = "API secret key goes here",
+  access_token = "access token goes here",
+  access_secret = "access token secret goes here")
+```
+Sorry, my Twitter keys are not included, but you can [get your own](https://rtweet.info/articles/auth.html)! (As of December 2018, that article depicts an earlier version of Twitter's API sign up stuff, but you can probably figure it out if you bang your head against the wall enough!)
+
+Next I get a Twitter [list](https://twitter.com/advocamentum/lists/news-media/members) of 51 media personalities from [Advocamentum](https://twitter.com/advocamentum):
+```{r get list of media personalities}
+advocamentum_news_media <- lists_members(owner_user = "Advocamentum", slug = "news-media")
+```
+Why Advocamentum's list? Because Wylie [subscribes](https://twitter.com/Wylie_H_Dallas/lists) to it.
+
+I am also analyzing Wylie's tweets, and I included Phillip Kingston because he seems to deeply align with Wylie politically:
+```{r}
+advocamentum_news_media <- advocamentum_news_media %>%
+  add_row(name = "Wylie H. Dallas",
+          screen_name = "Wylie_H_Dallas") %>%
+  add_row(name = "Philip Kingston",
+          screen_name = "PhilipTKingston")
+```
+Now let's get all of their tweets. The Twitter API [limits](https://developer.twitter.com/en/docs/tweets/timelines/api-reference/get-statuses-user_timeline.html) you to 3200 tweets per account you are pulling tweets from. Let's roll:
+```{r eval=FALSE, include=FALSE}
+# this takes a long time
+tweets <- map_df(advocamentum_news_media$screen_name,
+                 get_timeline,
+                 n = 3200)
+
+# Remove Michael Lindenberger's tweets after his announcement of his move
+tweets <- tweets %>%
+  filter(!(screen_name == "Lindenberger"))
+
+# Save the tweets to a file. That way, next time you analyze, you just load the file with load("tweets.Rda").
+save(tweets, file="tweets.Rda")
+```
+**tweets** is a [data frame](http://www.r-tutor.com/r-introduction/data-frame), an R concept like an Excel spreadsheet.
+
+I ran the above code on two occasions: December 25, 2018 and May 7, 2019. I will load both datasets and do all my analysis on them separately. The datasets are from really different times: the May 7 one is from a major city political cycle, and the December 25 one is from a holiday season in what is otherwise business as usual. My theory is that if we can detect similarities between Wylie and any other personalities, it will endure through both datasets.
+
+I previously collected all this data and saved the data to files. Here, I load that data back into R:
+```{r}
+load("tweets_20181225.Rda")
+tweets_20181225 <- tweets # first of two-step object rename
+rm(tweets) # second rename setp
+
+load("tweets_20190507.Rda")
+tweets_20190507 <- tweets
+rm(tweets)
+```
+
+Here's an example of the data:
+```{r}
+tweets_20181225 %>%
+  sample_n(10) %>%
+  select(screen_name, created_at, text) %>%
+  kable() %>%
+  kable_styling(full_width = FALSE)
+```
+Now we get to the fun part. Let's tease out the words that are distinct to each person.
+
+Before I do that, I need to filter the data. Wylie H. Dallas is a prolific tweeter. Because Twitter's API limits me to pulling a user's most recently ~3200 tweets, the time range of Wylie's ~3200 tweets will probably be considerably narrower than most of the others on the list. Here's a plot that demonstrates this:
+```{r}
+
+# This helps me color Wylie's column red. ggplot2 sorts
+# the 53 names alphabetically, and he is number 52.
+x_colors = rep("#000000", 54)
+x_colors[53] = "red"
+
+bind_rows(tweets_20190507, tweets_20181225) %>%
+  ggplot(aes(x=screen_name, y=created_at, color=screen_name)) +
+  geom_point(alpha = 0.05) +
+  theme(axis.text.x = element_text(angle = 90)) +
+  scale_color_manual(values=x_colors) +
+  theme(legend.position="none")
+```
+
+That plot isn't the best, but you can probably see two periods of Wylie's tweets, coming from both datasets. He is so prolific, each of the tweets reach the ~3200 limit before going back too far in time. Less prolific tweeters will go much further back in time before hitting the ~3200 limit. For example, Robert Wilonsky's tweets go back to roughly 2011, so in an eight-year span, Wilonsky's tweet volume approximates Wylie's in just three weeks.
+
+I prefer to limit analysis to tweets that only happen within the time frames of Wylie's tweets. Why? As Wylie's tweets cover political topics and minutia of current events, his word choice is likely to vary with time. Anyone whose tweets may correspond to Wylie's may have similar word-use variations. We'll check this theory a little later.
+
+Let's get the exact time stamps of Wylie's first and last tweets in each dataset, when we'll filter all tweets by those dates:
+```{r}
+wylie_first_tweet_20181225 <- min(tweets_20181225 %>%
+  filter(screen_name == "Wylie_H_Dallas") %>%
+  pull(created_at))
+wylie_last_tweet_20181225 <- max(tweets_20181225 %>%
+  filter(screen_name == "Wylie_H_Dallas") %>%
+  pull(created_at))
+
+wylie_first_tweet_20190507 <- min(tweets_20190507 %>%
+  filter(screen_name == "Wylie_H_Dallas") %>%
+  pull(created_at))
+wylie_last_tweet_20190507 <- max(tweets_20190507 %>%
+  filter(screen_name == "Wylie_H_Dallas") %>%
+  pull(created_at))
+```
+For both datasets, we are looking at around three months of Wylie's data. Now let's filter each dataset:
+```{r}
+tweets_20181225_filtered <- tweets_20181225 %>%
+  filter(created_at >= wylie_first_tweet_20181225 &
+           created_at <= wylie_last_tweet_20181225)
+tweets_20190507_filtered <- tweets_20190507 %>%
+  filter(created_at >= wylie_first_tweet_20190507 &
+           created_at <= wylie_last_tweet_20190507)
+```
+Wow, that eliminated 88% of our tweets, reducing us from 318,510 tweets to 37,230 tweets!
+
+Next, I create a new data frame that has each word in its own row:
+```{r}
+tweet_words <- bind_rows(tweets_20181225_filtered, tweets_20190507_filtered) %>%
+  # Remove retweets. Those don't reflect the author's own words.
+  filter(!is_retweet) %>%
+  # This sorts everything by the date the tweet was posted.
+  arrange(created_at) %>%
+  # I only care about these three fields.
+  select(screen_name, text) %>%
+  # Eliminate duplicate tweets.
+  distinct(text, .keep_all = TRUE) %>%
+  # Get rid of links back to Twitter. They show up if you reference another tweet. These are junk text as far as our analysis is concerned. Same for &amp; entity references.
+  mutate(text = str_replace_all(text, "https?://t.co/[A-Za-z\\d]+|&amp;", "")) %>%
+  # This splits tweets into individual words. What we are analyzing are the words, not the tweets.
+  unnest_tokens(word, text, token = "tweets") %>%
+  # We are only retaining words that contain at least one letter.  unnest_tokens made everything lowercase, so that is why you don't also see A-Z.
+  filter(str_detect(word, "[a-z]")) %>%
+  # Remove words that are stop words. Stop words do not contribute anything meaningful to the analysis, so they get removed.
+  filter(!word %in% stop_words$word)
+```
+Now we have a data frame with a row for each word that each author wrote in every tweet that we kept. Note the last line of the code: all [stop words](https://en.wikipedia.org/wiki/Stop_words) are removed. These are words that have little value for analysis: **the**, **a**, **at**, et al.
+
+Just for the fun of it, let's see the most commonly used words across all authors:
+```{r}
+tweet_words %>%
+  count(word, sort = TRUE) %>%
+  head(16) %>%
+  mutate(word = reorder(word, n)) %>%
+  ggplot(aes(word, n)) +
+  geom_col() +
+  coord_flip() +
+  labs(y = "# of uses among all accounts") +
+  ggtitle("Most commonly used words", subtitle="from tweets from Dallas-area media personalities and Wylie H. Dallas")
+```
+
+NBC-specific words appear twice in this top-words list! They must be coordinating their accounts.
+
+Now we work up to the exciting analysis. Right now, the **tweet_words** data frame has a row for each use of a word. We will collapse this into one row per word per author, with a count of how many times each author wrote that word.
+
+For example, here's an excerpt of **tweet_words**, filtered to a few of Wylie's uses of the word Dallas:
+```{r}
+tweet_words %>%
+  filter(screen_name == "Wylie_H_Dallas") %>%
+  filter(str_detect(word, "dallas")) %>%
+  filter(!str_detect(word, "[@#]")) %>%
+  arrange(word) %>%
+  head(10) %>%
+  kable() %>%
+  kable_styling(full_width = F)
+```
+The data has Wylie using the word **Dallas** over 300 times. Instead 200+ rows, each showing that Wylie wrote Dallas, we will condense into one row for each word and author, with a count of word use added as another column:
+```{r}
+word_counts <- tweet_words %>%
+  count(screen_name, word, sort = TRUE)
+```
+Here's what it looks like:
+```{r}
+word_counts %>%
+  filter(screen_name == "Wylie_H_Dallas") %>%
+  filter(str_detect(word, "dallas")) %>%
+  filter(!str_detect(word, "[@#]")) %>%
+  arrange(word) %>%
+  head(10) %>%
+  kable() %>%
+  kable_styling(full_width = F)
+```
+Now to the final step, but first an explanation. I will create a [term frequency–inverse document frequency](https://en.wikipedia.org/wiki/Tf%E2%80%93idf) (TF-IDF) statistic for each word. This statistic helps you see which words tend to be distinct to and used more frequently by a given author. Higher scores go to words that an author uses more frequently and are less common across the rest of the authors. Suppose Wylie frequently used the word **butthead**, and that word was uncommonly used by the other authors. In that case, **butthead** would have a higher score.
+
+What we're really getting at is a word-use fingerprint of each of these authors.
+
+Here's the code:
+```{r}
+# Compute TF-IDF using "word" as term and "screen_name" as document.
+word_tf_idf <- word_counts %>%
+  bind_tf_idf(word, screen_name, n) %>%
+  arrange(desc(tf_idf))
+```
+Here's Wylie's top 10 most distinct words:
+```{r}
+word_tf_idf %>%
+  filter(screen_name == "Wylie_H_Dallas") %>%
+  arrange(desc(tf_idf)) %>%
+  select(screen_name, word, tf_idf) %>%
+  head(10) %>%
+  kable(caption = "Wylie H. Dallas's most distinct words") %>%
+  kable_styling(full_width = F)
+```
+These are the words that are both most distinct to and most frequently used by Wylie.
+
+Hey, let's see Jim Schutze's relatively distinct words:
+```{r}
+word_tf_idf %>%
+  filter(screen_name == "JimSchutze") %>%
+  arrange(desc(tf_idf)) %>%
+  select(screen_name, word, tf_idf) %>%
+  head(10) %>%
+  kable(caption = "Jim Schutze's most distinct words") %>%
+  kable_styling(full_width = F)
+```
+Hmm, they both like the *Dallas Observer*! Other than that, I'm not seeing much. Looks like Schutze's most distinct words relate to what he's writing about in his day-job, whereas Wylie's most distinct words are about broader topics.
+
+However, these are only the top ten words. Wylie, for example, has `r word_tf_idf %>% filter(screen_name == "Wylie_H_Dallas") %>% count()` words total, so we need to do something more sophisticated. That will be a pairwise similarity calculation between all of each author's words, taking into account their TF-IDF statistics:
+```{r}
+similarity <- word_tf_idf %>%
+  pairwise_similarity(screen_name, word, tf_idf, upper = FALSE, sort = TRUE)
+```
+Let's look at the top 20 matches:
+```{r}
+similarity %>%
+  arrange(desc(similarity)) %>%
+  head(10) %>%
+  kable() %>%
+  kable_styling(full_width = FALSE)
+```
+This makes sense. What you are seeing is a high degree of similarity of distinct-word use between NBC5 accounts. Remember above, when I observed how NBC-related keywords rank high in total counts? NBC5 may be closely managing its Twitter accounts, which means they may have similar use of words that are relatively distinct across all authors.
+
+Let's filter the list just to where Wylie is being compared to the journalists:
+```{r}
+# Limit the list to just comparisons with Wylie
+similarity_to_wylie <- similarity %>%
+  filter(item1 == "Wylie_H_Dallas" |
+           item2 == "Wylie_H_Dallas") %>%
+  unite(account, item1, item2, sep="")
+
+similarity_to_wylie$account <- str_replace(similarity_to_wylie$account, "Wylie_H_Dallas", "")
+
+similarity_to_wylie %>%
+  head(10) %>%
+  kable() %>%
+  kable_styling(full_width = FALSE)
+```
+And there you go: Wylie's similarity score is much higher for Jim Schutze than anyone else. Let's make a plot:
+```{r}
+# Turning the account column into a factor so that ggplot doesn't reorder everything.
+similarity_to_wylie <- similarity_to_wylie %>%
+  mutate(account = reorder(account, similarity))
+
+similarity_to_wylie %>%
+  ggplot(aes(x=account, y=similarity)) +
+  geom_col() +
+  coord_flip()
+```
+
+This plot is a mess! Here's the same plot with just the top 20 similarity scores:
+```{r}
+similarity_to_wylie %>%
+  top_n(20) %>%
+  ggplot(aes(x=account, y=similarity)) +
+  geom_col() +
+  coord_flip()
+```
+
+Let's recap: we're seeing the strongest relationship of word-use fingerprints between Schutze and Wylie. Now let's look into other patterns.
+
+**This is where this page gets rough. I am not sure the below plots mean much of anything, plus I need to figure out how not to display all plots in sequence.**
+
+The first interesting pattern is how many tweets Wylie creates at each hour of the day. First, I need to convert the time to a decimal representation. For example, 8:15 AM--one quarter into the 8 AM hour--will be converted to 8.25:
+```{r}
+# first, merge the two filtered datasets of tweets
+tweets_filtered <- bind_rows(tweets_20181225_filtered, tweets_20190507_filtered)
+
+tweets_filtered$hour <- as.numeric(strftime(tweets_filtered$created_at, format = "%H")) +
+  as.numeric(strftime(tweets_filtered$created_at, format = "%M")) / 60
+```
+Pretty plots:
+```{r}
+for (i in unique(sort(tweets_filtered$screen_name))) {
+  plot <- tweets_filtered %>%
+  filter(screen_name == i) %>%
+  ggplot(aes(x = hour)) +
+  geom_histogram(bins = 24 * 6) +
+  scale_x_continuous(breaks = seq(0, 24, 4)) +
+  xlab("hour of day") +
+  ylab("count of tweets") +
+  ggtitle(paste(advocamentum_news_media[advocamentum_news_media$screen_name == i,]$screen_name, "'s tweet time histogram", sep = ""))
+  print(plot)
+  ggsave(paste(i, ".png"))
+}
+```
+
+
