@@ -5,20 +5,20 @@ output:
   html_document: 
     toc: yes
 ---
-# Summary
+## Summary
 [Wylie H. Dallas](https://twitter.com/Wylie_H_Dallas) is an alter ego for someone posing as a Dallas-area political gadfly. I've always suspected Wylie is someone's outlet for things that cannot be said with his or her public persona.
 
 I analyzed tweets of 52 Dallas-area media personalities, Wylie, and Philip Kingston. I included Philip because he was a prominent councilmember back when I started working on this, and Wylie appeared well aligned with Philip's causes.
 
 This analysis produced a scoring system. This shows Jim Schutze's word use, in his tweets, is the closest match for Wylie's word use. I wonder if Jim Schutze [knows more about Wylie](https://www.dallasobserver.com/news/we-must-stop-the-speculation-about-the-identity-of-wylie-h-soon-8561550) than he [lets on](https://www.dmagazine.com/publications/d-magazine/2015/june/wylie-h-dallas-most-powerful-nobody-in-dallas/). Wylie says Schutze is his [favorite](https://www.dallasobserver.com/arts/100-dallas-creatives-no-27-political-cyber-banksy-wylie-h-dallas-7097170) journalist.
 
-# Technical details
+## Technical details
 I did this analysis with [R](https://en.wikipedia.org/wiki/R_(programming_language)), a free software environment that is popular with the data science crowd, especially when the analysis is related to humanities, social sciences, statistics, and more.
 
 The rest of this document is my explanation of the analysis and the results. I was inspired by--and in a few cases stole code from--David Robinson's similar [analysis](http://varianceexplained.org/r/op-ed-text-analysis/) of who wrote the ["I Am Part of the Resistance" op-ed](https://www.nytimes.com/2018/09/05/opinion/trump-white-house-anonymous-resistance.html) about the Trump administration.
 
 First, I load some libraries. These have code, built by others, that I use throughout this analysis.
-```{r load libraries, results='hide'}
+```{r load libraries, message=FALSE, warning=FALSE, results='hide'}
 # based on http://varianceexplained.org/r/op-ed-text-analysis/
 library(rtweet)
 library(tidyverse)
