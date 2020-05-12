@@ -4,11 +4,17 @@ if (!require('RWordPress')) {devtools::install_github(c("duncantl/XMLRPC", "dunc
 
 library(knitr)
 library(RWordPress)
+library(keyring)
 
-options(WordpressLogin = c(`Aren Cambre` = 'tQ3djsKK'),
-        WordpressURL = 'https://arencambre.com/xmlrpc.php')
+#' Before the below commands will work, you need to run both of these from
+#' the console to set the username and password:
+#' key_set("blog_password")
 
-knit2wp('index.RmD',
+options(WordpressLogin = c("Aren Cambre" = key_get("blog_password")),
+        WordpressURL = 'https://www.arencambre.com/xmlrpc.php')
+
+knit2wp('index.Rmd',
         title = 'Who is Wylie H. Dallas?',
         publish = FALSE,
-        action = "newPost")
+        action = "editPost",
+        postid = 2818)
