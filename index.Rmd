@@ -5,17 +5,19 @@ output:
   html_document: 
     toc: yes
 ---
+# Summary
 [Wylie H. Dallas](https://twitter.com/Wylie_H_Dallas) is an alter ego for someone posing as a Dallas-area political gadfly. I've always suspected Wylie is someone's outlet for things that cannot be said with his or her public persona.
 
-Thanks to scoring determined through the use of data-science techniques, I wonder if Jim Schutze [knows more about Wylie](https://www.dallasobserver.com/news/we-must-stop-the-speculation-about-the-identity-of-wylie-h-soon-8561550) than he [lets on](https://www.dmagazine.com/publications/d-magazine/2015/june/wylie-h-dallas-most-powerful-nobody-in-dallas/). Wylie says Schutze is his [favorite](https://www.dallasobserver.com/arts/100-dallas-creatives-no-27-political-cyber-banksy-wylie-h-dallas-7097170) journalist.
+I analyzed tweets of 52 Dallas-area media personalities, Wylie, and Philip Kingston. I included Philip because he was a prominent councilmember back when I started working on this, and Wylie appeared well aligned with Philip's causes.
 
-I analyzed tweets of 52 Dallas-area media personalities, Wylie, and Phillip Kingston. (I included PK because he was a prominent councilmember back when I started working on this.) I did this with [R](https://en.wikipedia.org/wiki/R_(programming_language)), a free software environment that is popular with the data science crowd, especially when they are solving problems related to humanities, social sciences, and statistics.
+This analysis produced a scoring system. This shows Jim Schutze's word use, in his tweets, is the closest match for Wylie's word use. I wonder if Jim Schutze [knows more about Wylie](https://www.dallasobserver.com/news/we-must-stop-the-speculation-about-the-identity-of-wylie-h-soon-8561550) than he [lets on](https://www.dmagazine.com/publications/d-magazine/2015/june/wylie-h-dallas-most-powerful-nobody-in-dallas/). Wylie says Schutze is his [favorite](https://www.dallasobserver.com/arts/100-dallas-creatives-no-27-political-cyber-banksy-wylie-h-dallas-7097170) journalist.
+
+# Technical details
+I did this analysis with [R](https://en.wikipedia.org/wiki/R_(programming_language)), a free software environment that is popular with the data science crowd, especially when the analysis is related to humanities, social sciences, statistics, and more.
 
 The rest of this document is my explanation of the analysis and the results. I was inspired by--and in a few cases stole code from--David Robinson's similar [analysis](http://varianceexplained.org/r/op-ed-text-analysis/) of who wrote the ["I Am Part of the Resistance" op-ed](https://www.nytimes.com/2018/09/05/opinion/trump-white-house-anonymous-resistance.html) about the Trump administration.
 
-My first analysis is to see if any of the media personalities' word use aligns with Wylie's.
-
-First, I need to load some libraries. These have code I will be using throughout this first section.
+First, I load some libraries. These have code, built by others, that I use throughout this analysis.
 ```{r load libraries, results='hide'}
 # based on http://varianceexplained.org/r/op-ed-text-analysis/
 library(rtweet)
@@ -34,7 +36,7 @@ token <- create_token(
   access_token = "access token goes here",
   access_secret = "access token secret goes here")
 ```
-Sorry, my Twitter keys are not included, but you can [get your own](https://rtweet.info/articles/auth.html)! (At one time, that article depicts an earlier version of Twitter's API sign up stuff, but you can probably figure it out if you bang your head against the wall enough!)
+Sorry, my Twitter keys are not included, but you can [get your own](https://rtweet.info/articles/auth.html)! (That article may still show an earlier version of Twitter's API sign up stuff. You can probably figure it out if you bang your head against the wall enough!)
 
 Next I get a Twitter [list](https://twitter.com/advocamentum/lists/news-media/members) of media personalities from [Advocamentum](https://twitter.com/advocamentum):
 ```{r get list of media personalities}
@@ -43,7 +45,9 @@ advocamentum_news_media <- lists_members(owner_user = "Advocamentum", slug = "ne
 ```
 Why Advocamentum's list? Because Wylie [subscribes](https://twitter.com/Wylie_H_Dallas/lists) to Advocamentum's list, and Wylie's other subscribed lists don't seem plausible.
 
-I am also analyzing Wylie's tweets, and I included Phillip Kingston because he seems to deeply align with Wylie politically:
+Advocamentum appears to be an inactive account. Since it has been updated, media personalities have come and gone from the Dallas market. It is unlikely these are or were Wylie, unless we can spot a shift in his writing style that could be explained by a handover.
+
+I am also analyzing Wylie's tweets, and I included Phillip Kingston because he seems to politically align with Wylie:
 ```{r add Wylie and Phillip to the news media list}
 advocamentum_news_media <- advocamentum_news_media %>%
   add_row(name = "Wylie H. Dallas",
@@ -58,17 +62,14 @@ tweets <- map_df(advocamentum_news_media$screen_name,
                  get_timeline,
                  n = 3200)
 
-# Remove Michael Lindenberger's and Monica Hernandez's tweets since they are no longer in Dallas
-tweets <- tweets %>%
-  filter(!(screen_name == "Lindenberger")) %>%
-  filter(!(screen_name == "MonicaTVNews"))
-
 # Save the tweets to a file. That way, next time you analyze, you just load the file with load("tweets.Rda").
 save(tweets, file="tweets.Rda")
 ```
 **tweets** is a [data frame](http://www.r-tutor.com/r-introduction/data-frame), an R concept like an Excel spreadsheet.
 
-I ran the above code on three occasions: December 25, 2018, May 7, 2019, and May 11, 2020. I will load all three datasets and merge them together. The datasets are from different times: the December 25, 2018 one is from a holiday season in what is otherwise business as usual, the May 7, 2019 one is from a major city political cycle, and the May 11, 2020 one is during a pandemic. My theory is that if we can detect similarities between Wylie and any other personalities, it will endure through both datasets.
+I ran the above code on three occasions: December 25, 2018; May 7, 2019; and May 11, 2020. Each time, I saved my downloaded tweets to an Rda file with the date embedded in the file name.
+
+I will load all three tweet-datasets and merge them together. The datasets are from different times: the December 25, 2018 one is from a holiday season in what is otherwise business as usual, the May 7, 2019 one is from a major city political cycle, and the May 11, 2020 one is during a pandemic. My theory is that if we can detect similarities between Wylie and any other personalities, it will endure through both datasets.
 
 I previously collected all this data and saved the data to files. Here, I load that data back into R:
 ```{r load previously saved tweets}
@@ -153,6 +154,22 @@ tweets_20200511_filtered <- tweets_20200511 %>%
            created_at <= wylie_last_tweet_20200511)
 ```
 Wow, that eliminated the vast majority of our tweets, reducing us from over 480,000 tweets to about 55,000 tweets!
+
+Before we go further, let's remove Michael Lindenberger's and Monica Hernandez's tweets since they left the Dallas market:
+
+```{r}
+# Remove Michael Lindenberger's and Monica Hernandez's tweets since they are no longer in Dallas
+removeLostSouls <- function(tweetset) {
+  return(tweetset %>%
+           filter(!(screen_name == "Lindenberger")) %>%
+           filter(!(screen_name == "MonicaTVNews")))
+}
+
+tweets_20181225_filtered <- removeLostSouls(tweets_20181225_filtered)
+tweets_20190507_filtered <- removeLostSouls(tweets_20190507_filtered)
+tweets_20200511_filtered <- removeLostSouls(tweets_20200511_filtered)
+
+```
 
 Next, I create a new data frame that has each word in its own row:
 ```{r create data frame with each word in its own row}
@@ -296,7 +313,9 @@ similarity_to_wylie <- similarity_to_wylie %>%
 similarity_to_wylie %>%
   ggplot(aes(x=account, y=similarity)) +
   geom_col() +
-  coord_flip()
+  coord_flip() +
+  labs(y = "Twitter user") +
+  ggtitle("Similarity between Wylie H. Dallas and others ", subtitle="from tweets from Dallas-area media personalities and Wylie H. Dallas")
 ```
 
 This plot is a mess! Here's the same plot with just the top 20 similarity scores:
@@ -305,7 +324,9 @@ similarity_to_wylie %>%
   top_n(20) %>%
   ggplot(aes(x=account, y=similarity)) +
   geom_col() +
-  coord_flip()
+  coord_flip() +
+  labs(y = "Twitter user") +
+  ggtitle("Similarity between Wylie H. Dallas and others ", subtitle="from tweets from Dallas-area media personalities and Wylie H. Dallas")
 ```
 
 We're seeing the strongest relationship of word-use fingerprints between Schutze and Wylie.
